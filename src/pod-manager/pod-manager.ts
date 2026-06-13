@@ -1,6 +1,6 @@
-import type { QueuedStep } from "../types/workflow"
-import { podPool } from "../k8s/pod-pool"
-import { resultQueue } from "../queue/result-queue"
+import type { QueuedStep } from "../types/workflow";
+import { podPool } from "../k8s/pod-pool";
+import { resultQueue } from "../queue/result-queue";
 
 /**
  * TODO: Implement this class.
@@ -24,11 +24,46 @@ import { resultQueue } from "../queue/result-queue"
  */
 export class PodManager {
   async dispatch(step: QueuedStep): Promise<void> {
-    void step
-    void podPool
-    void resultQueue
-    throw new Error("TODO: implement dispatch")
+    // 1. acquirePod()                          ← from boilerplate
+    // 2. publish { status: "RUNNING" }         → result queue
+    // 3. execInPod(podId, command)             ← from boilerplate
+    // 4. publish { status: "COMPLETED" }       → result queue
+    // 5. releasePod(podId)                     ← from boilerplate
+    let podId: string | null = null;
+
+    try {
+      const pod = await podPool.acquirePod();
+      podId = pod.podId;
+      await resultQueue.push({
+        stepId: step.stepId,
+        workflowId: step.workflowId,
+        podId,
+        status: "RUNNING",
+      });
+      const output = await podPool.execInPod(podId, step.command);
+      await resultQueue.push({
+        stepId: step.stepId,
+        workflowId: step.workflowId,
+        podId,
+        status: "COMPLETED",
+        stdout: output,
+      });
+    } catch (error) {
+      if (podId) {
+        await resultQueue.push({
+          stepId: step.stepId,
+          workflowId: step.workflowId,
+          podId,
+          status: "FAILED",
+          error: String(error),
+        });
+      }
+    } finally {
+      if (podId) {
+        await podPool.releasePod(podId);
+      }
+    }
   }
 }
 
-export const podManager = new PodManager()
+export const podManager = new PodManager();
