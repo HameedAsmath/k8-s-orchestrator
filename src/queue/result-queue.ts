@@ -3,27 +3,34 @@ import { redis } from "./redis-client"
 
 const RESULT_QUEUE_KEY = "workflow:result-queue"
 
+function parseStepResult(value: string): StepResult {
+  return JSON.parse(value) as StepResult
+}
+
 /**
- * TODO: Implement this class.
+ * A Redis-backed result queue for events coming back from the pod manager.
  *
- * A queue for results coming back from the pod manager.
- * Use LPUSH to push and BRPOP to consume (blocking pop).
- *
- * push(result)              → redis.lpush(RESULT_QUEUE_KEY, JSON.stringify(result))
- * consume(handler)          → loop forever using subscriber.brpop(RESULT_QUEUE_KEY, 0),
- *                             parse each result, call handler(result)
- *
- * The consume loop must run continuously in the background.
- * Use a dedicated ioredis connection for BRPOP via redis.duplicate() —
- * blocking calls must not share a connection with non-blocking operations.
+ * Redis plumbing is provided so students can focus on orchestrator behavior.
+ * The blocking BRPOP consumer uses a dedicated Redis connection.
  */
 export class ResultQueue {
   async push(result: StepResult): Promise<void> {
-    throw new Error("TODO: implement push")
+    await redis.lpush(RESULT_QUEUE_KEY, JSON.stringify(result))
   }
 
   async consume(handler: (result: StepResult) => Promise<void>): Promise<void> {
-    throw new Error("TODO: implement consume")
+    const subscriber = redis.duplicate()
+
+    while (true) {
+      const item = await subscriber.brpop(RESULT_QUEUE_KEY, 0)
+      if (!item) continue
+
+      const [, value] = item
+      const result = parseStepResult(value)
+
+      // TODO: Students implement result handling in orchestrator.ts by passing a handler here.
+      await handler(result)
+    }
   }
 }
 

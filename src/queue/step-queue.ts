@@ -3,33 +3,41 @@ import { redis } from "./redis-client"
 
 const STEP_QUEUE_KEY = "workflow:step-queue"
 
+function parseQueuedStep(value: string): QueuedStep {
+  return JSON.parse(value) as QueuedStep
+}
+
 /**
- * TODO: Implement this class.
+ * A fully implemented FIFO queue backed by Redis.
  *
- * A FIFO queue backed by Redis.
+ * Students should use this queue from the orchestrator instead of
+ * reimplementing Redis list operations.
+ *
  * Use LPUSH to enqueue and RPOP to dequeue.
  * Items are serialized as JSON strings in Redis.
- *
- * enqueue(step)  → redis.lpush(STEP_QUEUE_KEY, JSON.stringify(step))
- * dequeue()      → redis.rpop(STEP_QUEUE_KEY), parse and return or null if empty
- * peek()         → redis.lrange(STEP_QUEUE_KEY, -1, -1) without removing
- * size()         → redis.llen(STEP_QUEUE_KEY)
  */
 export class StepQueue {
   async enqueue(step: QueuedStep): Promise<void> {
-    throw new Error("TODO: implement enqueue")
+    await redis.lpush(STEP_QUEUE_KEY, JSON.stringify(step))
   }
 
   async dequeue(): Promise<QueuedStep | null> {
-    throw new Error("TODO: implement dequeue")
+    const value = await redis.rpop(STEP_QUEUE_KEY)
+    if (!value) return null
+
+    return parseQueuedStep(value)
   }
 
   async peek(): Promise<QueuedStep | null> {
-    throw new Error("TODO: implement peek")
+    const values = await redis.lrange(STEP_QUEUE_KEY, -1, -1)
+    const value = values[0]
+    if (!value) return null
+
+    return parseQueuedStep(value)
   }
 
   async size(): Promise<number> {
-    throw new Error("TODO: implement size")
+    return redis.llen(STEP_QUEUE_KEY)
   }
 }
 

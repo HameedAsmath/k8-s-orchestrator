@@ -36,6 +36,7 @@ export type QueuedStep = {
   stepId: string
   workflowId: string
   command: string
+  enqueuedAt: number
 }
 
 export type StepResult = {
