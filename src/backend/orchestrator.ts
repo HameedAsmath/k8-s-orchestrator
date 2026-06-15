@@ -130,13 +130,6 @@ export class Orchestrator {
     // setWorkflow(workflow.workflowId, state);
     await this.enqueueReadySteps(workflow.workflowId);
     this.processNextStep();
-
-    // void workflow;
-    // void getWorkflow;
-    // void setWorkflow;
-    // void getReadySteps;
-    // void stepQueue;
-    // throw new Error("TODO: implement submitWorkflow");
   }
 
   async start(): Promise<void> {
